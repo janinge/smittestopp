@@ -11,6 +11,7 @@ from logging import getLogger
 log = getLogger(__name__)
 
 RETRY_DELAY = 60.0
+NO_MAC = '__-__-__-__-__-__'
 
 
 def process_reports(db_session, report_queue, connect_queue):
@@ -90,8 +91,8 @@ if __name__ == "__main__":
     results = Queue()
 
     start_discovery(ble)
-    _, reports = start_listener(ble)
-    _, missing = start_connector(results)
+    listener, reports = start_listener(ble)
+    connector, missing = start_connector(results)
 
     atexit.register(stop_discovery, ble)
 
@@ -102,6 +103,10 @@ if __name__ == "__main__":
             process_connections(db, results)
         except Empty:
             process_reports(db, reports, missing)
+            if not connector.is_alive() or not listener.is_alive():
+                log.error("Bluetooth threads have died. Exiting.", extra={'mac': NO_MAC})
+                db.close()
+                break
 
     # GLib.io_add_watch(results._reader.fileno(), GLib.IO_IN, process_connections, db, results)
     # GLib.timeout_add(2000, process_reports, db, reports, missing)

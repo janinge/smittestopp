@@ -31,7 +31,9 @@ def start_listener(hcisocket):
 
     thread = Thread(target=lambda queue: hcisocket.sniff(prn=lambda a: adverts_received(a, queue),
                                                          lfilter=lambda p: HCI_LE_Meta_Advertising_Reports in p),
-                    daemon=True, args=(report_queue,)).start()
+                    daemon=True, args=(report_queue,))
+    thread.start()
+
     return thread, report_queue
 
 

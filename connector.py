@@ -23,6 +23,10 @@ class QueryDevice(gatt.Device):
         self.device.connect_failed()
         log.info("Connection failed: %s", str(error), extra={'mac': self.mac_address})
 
+        if 'Device does not exist' in str(error):
+            log.error("Bluetooth device disappeared. Stopping.", extra={'mac': self.mac_address})
+            raise SystemExit
+
     def disconnect_succeeded(self):
         super().disconnect_succeeded()
         self.device.complete()
