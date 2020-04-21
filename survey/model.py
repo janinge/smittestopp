@@ -1,9 +1,13 @@
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, SmallInteger, String, Float
+from sqlalchemy import Column, Integer, SmallInteger, String, Float, Table
 from sqlalchemy.orm import relationship
 from sqlalchemy import ForeignKey
 
 Base = declarative_base()
+
+service_association = Table('mac_service', Base.metadata,
+                             Column('mac_address', Integer, ForeignKey('discovered.mac_address')),
+                             Column('service_uuid', Integer, ForeignKey('service.uuid')))
 
 
 class Random(Base):
@@ -15,7 +19,7 @@ class Random(Base):
     queued = Column(Float)
     connected = Column(Float)
     attempts = Column(Integer, default=0)
-    services = Column(Integer)
+    services = relationship("Service", secondary=service_association)
     connect_time = Column(Integer)
     inquiry_time = Column(Integer)
     signal = relationship("Signal")
@@ -32,3 +36,10 @@ class Signal(Base):
     rssi = Column(SmallInteger)
     reported = Column(SmallInteger)
     random = Column(String(17), ForeignKey('discovered.mac_address'))
+
+
+class Service(Base):
+    __tablename__ = 'service'
+
+    uuid = Column(String(36), primary_key=True)
+    characteristics = Column(SmallInteger)

@@ -12,6 +12,12 @@ class QueryDevice(gatt.Device):
     def __init__(self, manager, device_status):
         super().__init__(device_status.addr, manager)
         self.device = device_status
+        self._connect_retry_attempt = 3
+
+    def connect(self):
+        log.info("Connecting", extra={'mac': self.mac_address})
+        self._connect_signals()
+        self._connect()
 
     def connect_succeeded(self):
         super().connect_succeeded()
@@ -33,13 +39,13 @@ class QueryDevice(gatt.Device):
 
     def services_resolved(self):
         super().services_resolved()
-        self.device.services_resolved(len(self.services))
         self.read_services()
 
         log.info("Resolved %i services", len(self.services), extra={'mac': self.mac_address})
 
     def read_services(self):
         for service in self.services:
+            self.device.service_resolved(service.uuid, len(service.characteristics))
             for characteristic in service.characteristics:
                 if characteristic.uuid in ('64b81e3c-d60c-4f08-8396-9351b04f7591', '1000-8000-00805f9b34fb'):
                     characteristic.read_value()
@@ -51,8 +57,9 @@ class QueryDevice(gatt.Device):
         else:
             self.device.public = value.decode("utf-8")
 
+        self.device.inquiry_finished()
+
         if self.device.device_id and self.device.public:
-            self.device.inquiry_finished()
             self.disconnect()
         else:
             self.device.push()
@@ -70,7 +77,7 @@ class DeviceStatus:
         self.notify = result_queue
         self.pending = False
         self.connect_started = None
-        self.services_retrieved = None
+        self.services_retrieved = []
         self.connect_ended = None
         self.inquiry_ended = None
         self.connected_time = None
@@ -83,12 +90,11 @@ class DeviceStatus:
         self.connect_ended = monotonic()
         self.connected_time = time()
 
-    def services_resolved(self, num_services):
-        self.services_retrieved = num_services
+    def service_resolved(self, uuid, num_characteristics):
+        self.services_retrieved.append((uuid, num_characteristics))
 
     def inquiry_finished(self):
         self.inquiry_ended = monotonic()
-        self.complete()
 
     def connect_failed(self):
         self.complete()

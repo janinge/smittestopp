@@ -1,10 +1,10 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from queue import Empty, Queue
+from queue import Empty
 from time import time
-from model import *
-from discover import *
-from connector import start_connector
+from survey.model import *
+from survey.discover import *
+from survey.connector import start_connector
 
 from logging import getLogger
 
@@ -60,7 +60,15 @@ def process_connections(db_session, status_queue):
             device.connect_time = (r.connect_ended - r.connect_started) * 1000
 
         if r.services_retrieved:
-            device.services = r.services_retrieved
+            for uuid, num_char in r.services_retrieved:
+                service = db_session.query(Service).get(uuid)
+                if not service:
+                    service = Service(uuid=uuid, characteristics=num_char)
+                    db_session.add(service)
+                if not service.characteristics:
+                    service.characteristics = num_char
+
+                device.services.append(service)
 
         if r.device_id:
             device.device_id = r.device_id
@@ -105,7 +113,10 @@ if __name__ == "__main__":
             process_reports(db, reports, missing)
             if not connector.is_alive() or not listener.is_alive():
                 log.error("Bluetooth threads have died. Exiting.", extra={'mac': NO_MAC})
+                atexit.unregister(stop_discovery)
                 db.close()
+                from sys import exit
+                exit(8)
                 break
 
     # GLib.io_add_watch(results._reader.fileno(), GLib.IO_IN, process_connections, db, results)
