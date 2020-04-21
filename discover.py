@@ -1,13 +1,11 @@
-from typing import Any, Iterator
+from itertools import chain
+from logging import getLogger
+from queue import Queue
+from threading import Thread
+from uuid import UUID
 
 from scapy.layers.bluetooth import *
-from itertools import chain
-from uuid import UUID
-from time import sleep
-from queue import Queue, Empty
-from threading import Thread
 
-from logging import getLogger
 log = getLogger(__name__)
 
 SMITTE_UUID = {UUID('e45c1747-a0a4-44ab-8c06-a956df58d93a'),
